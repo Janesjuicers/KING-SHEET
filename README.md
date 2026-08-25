@@ -1,6 +1,6 @@
 # KING SHEET — Google Sheets matched-betting tracker
 
-This repository is a container-bound Google Apps Script project. It builds the connected financial sheets **Settings → Promos/BTO/NonPromos → Monthly Metrics and EV Breakdown → Master PnL**, plus the independent **Bookie Health** status matrix and Audit. Dashboard totals always read the three entry sheets directly; Bookie Health is not included in EV or PnL.
+This repository is a container-bound Google Apps Script project. It builds the connected financial sheets **Bookie Health → Accounts and account dropdowns**, and **Settings → Promos/BTO/NonPromos → Monthly Metrics and EV Breakdown → Master PnL**, plus Audit.
 
 ## Deploy to Google Sheets
 
@@ -20,10 +20,11 @@ The build is idempotent: it reuses named sheets, replaces managed formulas/chart
 
 ## Manual-entry columns
 
-* **Settings:** all list/rate cells are editable. Add bookmaker accounts in column H, BTO methods in I, non-promo types in J, results in K, general account statuses in L, transaction types in M, and banks in N. Bookie Health statuses (including colours, order, and active flags) are in P:T, and its bookmaker list is in V. Promo rates are A:B, EV tier limits D:F, and the missing-BSP BTO default is E10.
-* **Bookie Health:** bookmaker rows come from Settings column V. Profiles 1–20 begin in columns B:U. Selecting another active status appends it with `, `; repeats are ignored and clearing a cell leaves it blank. Use **Matched Betting Tracker → Refresh Bookie Health** after editing bookmakers or status settings.
+* **Settings:** BTO methods are in I, non-promo types in J, results in K, and the Bookie Health bookmaker list is in V. Column W is a hidden, generated helper backing the `Account_ID_List` named range; do not maintain account IDs manually. Bookie Health statuses (including colours, order, and active flags) are in P:T. Promo rates are A:B, EV tier limits D:F, and the missing-BSP BTO default is E10.
+* **Bookie Health:** bookmaker rows come from Settings column V. Each of profiles 1–20 has adjacent Status and generated Account ID columns. Selecting another active status appends it with `, `; Account ID cells have no status validation. Refreshing also updates the central list, Accounts, and all account dropdowns.
+* **Accounts:** generated Account IDs are appended once; existing columns and account data are preserved and matched by Account ID.
 * **Promos:** Date, Account, Promo Type, Notes, Turnover, Odds, Result, Cash Change, Bonus Change (B:H and K:L, excluding generated columns). Entry ID, Promo EV %, Estimated EV, Actual PnL, POT %, EV Tier, and Month are calculated.
-* **BTO:** Date, Account, BTO Method, Notes, Turnover, Odds, optional BSP, Result, Bookie Change, Betfair Lay Stake, Lay Odds, Commission %, and Betfair Change (B:I and L:P). Entry ID, EV Taken, EV %, Actual Return, Actual BTO %, and Month are calculated.
+* **BTO:** columns are Date, Account, BTO Method, Notes, Turnover, Odds, optional BSP, Result, EV Taken, EV %, Bookie Change, Betfair Lay Stake, Lay Odds, Commission %, Betfair Change, Actual Return, and Actual BTO %. It has no Entry ID or Month helper; monthly reporting groups directly from Date.
 * **NonPromos:** Date, Account, Non-Promo Type, Notes, Turnover, Odds, BSP, Result, Bookie Change, and Betfair Change (B:I and L:M). Entry ID, Expected EV, EV %, Actual PnL, POT %, and Month are calculated.
 * **EV Breakdown:** reporting period in B2; for Custom, From Date in B3 and To Date in B4.
 
