@@ -1,9 +1,9 @@
 function buildWorkbook() {
   MB.SHEETS.forEach(n => mbSheet_(n));
   setupSettings_();
-  setupEntrySheet_(mbSheet_('Promos'), MB.PROMO_HEADERS);
+  migrateEntrySheet_('Promos',MB.PROMO_HEADERS);
   migrateBtoSheet_();
-  setupEntrySheet_(mbSheet_('NonPromos'), MB.NON_HEADERS);
+  migrateEntrySheet_('NonPromos',MB.NON_HEADERS);
   refreshBookieHealth();
   seedPromoExamples_();
   refreshFormulas();
@@ -29,6 +29,25 @@ function migrateBtoSheet_() {
   trimBtoColumns_(s);
 }
 
+/** Rebuilds a changed entry layout by header name, without moving one field into another. */
+function migrateEntrySheet_(name,wanted) {
+  const s=mbSheet_(name), lastRow=s.getLastRow(), lastCol=s.getLastColumn();
+  if(!lastRow || !s.getRange(1,1).getValue()) { setupEntrySheet_(s,wanted); trimEntryColumns_(s,wanted.length); return; }
+  const old=s.getRange(1,1,1,lastCol).getDisplayValues()[0].map(String);
+  if(old.slice(0,wanted.length).join('\u0001')===wanted.join('\u0001') && old.length===wanted.length) { setupEntrySheet_(s,wanted); return; }
+  const values=lastRow>1?s.getRange(2,1,lastRow-1,lastCol).getValues():[];
+  const mapped=values.map(row=>wanted.map(h=>{const i=old.indexOf(h);return i<0?'':row[i];}));
+  const filter=s.getFilter(); if(filter)filter.remove();
+  s.getDataRange().clearContent(); mbEnsureSize_(s,MB.ROWS,wanted.length);
+  s.getRange(1,1,1,wanted.length).setValues([wanted]);
+  if(mapped.length)s.getRange(2,1,mapped.length,wanted.length).setValues(mapped);
+  trimEntryColumns_(s,wanted.length); s.getRange(1,1,s.getMaxRows(),wanted.length).createFilter(); s.setFrozenRows(1);
+}
+
+function trimEntryColumns_(s,count) {
+  if(s.getMaxColumns()>count)s.deleteColumns(count+1,s.getMaxColumns()-count);
+}
+
 function trimBtoColumns_(s) {
   if(s.getMaxColumns()<=MB.BTO_HEADERS.length)return;
   const filter=s.getFilter(); if(filter)filter.remove();
@@ -38,18 +57,17 @@ function trimBtoColumns_(s) {
 
 function seedPromoExamples_() {
   const s=mbSheet_('Promos');
-  if (s.getRange('B2:B').getValues().some(r=>r[0]!=='')) return;
+  if (s.getRange('A2:A').getValues().some(r=>r[0]!=='')) return;
   const today=new Date();
-  s.getRange('B2:H4').setValues([
+  s.getRange('A2:G4').setValues([
     [today,'','SGM3 Leg','Starter example: edit or delete',100,2.10,'W'],
     [today,'','Free Hit Single','Starter example: edit or delete',50,4.00,'B'],
     [today,'','SRM','Starter example: edit or delete',25,3.20,'L']]);
-  s.getRange('K2:L4').setValues([[30,0],[-50,50],[-25,0]]);
 }
 
 function setupSettings_() {
   const s = mbSheet_('Settings');
-  mbEnsureSize_(s, 100, 22);
+  mbEnsureSize_(s, 251, 23);
   const headings = [['Promo Type','EV %','','EV Tier','Minimum %','Maximum %','','Legacy Accounts (unused)','BTO Methods','Non-Promo Types','Results','Account Statuses','Transaction Types','Banks']];
   s.getRange(1,1,1,14).setValues(headings);
   if (!s.getRange('A2').getValue()) s.getRange(2,1,MB.PROMOS.length,2).setValues(MB.PROMOS);
@@ -77,9 +95,12 @@ function setupBookieHealthSettings_(s) {
     const candidates=[];
     s.getRange('H2:H100').getDisplayValues().forEach(r=>candidates.push(r[0]));
     ['Promos','BTO','NonPromos'].forEach(n=>{const entry=mbSheet_(n), headers=entry.getRange(1,1,1,Math.max(1,entry.getLastColumn())).getDisplayValues()[0];const c=headers.indexOf('Account')+1;if(c)entry.getRange(2,c,MB.ROWS-1,1).getDisplayValues().forEach(r=>candidates.push(r[0]));});
-    const names=[...new Set(candidates.map(v=>String(v).trim()).filter(Boolean))];
+    let names=[...new Set(candidates.map(baseBookmakerName_).filter(Boolean))];
+    if(!names.length)names=['Bet365','TAB','Sportsbet','Unibet','BetNation','NextBet'];
     if (names.length) s.getRange(2,22,names.length,1).setValues(names.map(v=>[v]));
   }
+  const bookmakerRange=s.getRange(2,22,MB.BOOKIE_HEALTH_ROWS,1), bookmakerValues=bookmakerRange.getDisplayValues();
+  bookmakerRange.setValues(bookmakerValues.map(r=>[baseBookmakerName_(r[0])]));
   s.getRange('P1:T1').setBackground('#183153').setFontColor('white').setFontWeight('bold');
   s.getRange('V1').setBackground('#183153').setFontColor('white').setFontWeight('bold');
 }

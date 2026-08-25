@@ -21,11 +21,11 @@ The build is idempotent: it reuses named sheets, replaces managed formulas/chart
 ## Manual-entry columns
 
 * **Settings:** BTO methods are in I, non-promo types in J, results in K, and the Bookie Health bookmaker list is in V. Column W is a hidden, generated helper backing the `Account_ID_List` named range; do not maintain account IDs manually. Bookie Health statuses (including colours, order, and active flags) are in P:T. Promo rates are A:B, EV tier limits D:F, and the missing-BSP BTO default is E10.
-* **Bookie Health:** bookmaker rows come from Settings column V. Each of profiles 1–20 has adjacent Status and generated Account ID columns. Selecting another active status appends it with `, `; Account ID cells have no status validation. Refreshing also updates the central list, Accounts, and all account dropdowns.
+* **Bookie Health:** up to 250 nonblank base bookmaker names come from Settings column V. Each of profiles 1–24 has adjacent Status and protected Account ID columns. An ID (for example `23BetNation`) exists only while its Status is nonblank. Selecting another active status appends it with `, ` without duplicates; clearing Status also clears the ID. Refreshing preserves selections by bookmaker name and updates the central list, Accounts, and all account dropdowns.
 * **Accounts:** generated Account IDs are appended once; existing columns and account data are preserved and matched by Account ID.
-* **Promos:** Date, Account, Promo Type, Notes, Turnover, Odds, Result, Cash Change, Bonus Change (B:H and K:L, excluding generated columns). Entry ID, Promo EV %, Estimated EV, Actual PnL, POT %, EV Tier, and Month are calculated.
+* **Promos:** the visible columns are exactly Date, Account, Promo Type, Notes, Turnover, Odds, Result, Estimated EV, Cash Change, and Bonus Change. The last three are protected formulas; reporting derives actual PnL as Cash Change plus Bonus Change and groups directly from Date.
 * **BTO:** columns are Date, Account, BTO Method, Notes, Turnover, Odds, optional BSP, Result, EV Taken, EV %, Bookie Change, Betfair Lay Stake, Lay Odds, Commission %, Betfair Change, Actual Return, and Actual BTO %. It has no Entry ID or Month helper; monthly reporting groups directly from Date.
-* **NonPromos:** Date, Account, Non-Promo Type, Notes, Turnover, Odds, BSP, Result, Bookie Change, and Betfair Change (B:I and L:M). Entry ID, Expected EV, EV %, Actual PnL, POT %, and Month are calculated.
+* **NonPromos:** Date, Account, Non-Promo Type, Notes, Turnover, Odds, BSP, Result, Bookie Change, and Betfair Change remain manual fields. Expected EV, EV %, Actual PnL, POT %, and Month remain calculated; Entry ID has been removed.
 * **EV Breakdown:** reporting period in B2; for Custom, From Date in B3 and To Date in B4.
 
 Formula columns use spill formulas and warning-only protections. Warning-only protection prevents accidental edits without locking the owner out. Add data below the header; formulas and validations are provisioned for 1,999 entry rows and the builder safely expands short sheets.
@@ -36,6 +36,5 @@ Formula columns use spill formulas and warning-only protections. Warning-only pr
 * `runAudit()` creates live PASS/FAIL checks with a one-cent monetary tolerance, scans displayed values for spreadsheet errors, and checks Bookie Health names, multi-status values, mappings, and validation.
 * Bonus Change is valued at 100%. Blank Bookie/Betfair changes become zero after Date and Turnover exist.
 * BSP is optional for BTO (the Settings fallback applies), but Audit deliberately flags missing BSP for review. Non-promo expected EV remains blank without BSP.
-* Entry IDs are deterministic from sheet, date, and row. Moving a row changes its generated ID; no separate immutable-ID service is assumed.
 * Australian dates and AUD formats are display formats. The project time zone is Australia/Sydney.
 * Settings updates recalculate spill formulas and every downstream summary/dashboard because all summaries reference entry-level calculated columns.
