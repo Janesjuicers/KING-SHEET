@@ -1,6 +1,6 @@
 # KING SHEET — Google Sheets matched-betting tracker
 
-This repository is a container-bound Google Apps Script project. It builds eight connected sheets: **Settings → Promos/BTO/NonPromos → Monthly Metrics and EV Breakdown → Master PnL**, plus Audit. Dashboard totals always read the three entry sheets directly; they are not added from overlapping summary tables.
+This repository is a container-bound Google Apps Script project. It builds the connected financial sheets **Settings → Promos/BTO/NonPromos → Monthly Metrics and EV Breakdown → Master PnL**, plus the independent **Bookie Health** status matrix and Audit. Dashboard totals always read the three entry sheets directly; Bookie Health is not included in EV or PnL.
 
 ## Deploy to Google Sheets
 
@@ -20,7 +20,8 @@ The build is idempotent: it reuses named sheets, replaces managed formulas/chart
 
 ## Manual-entry columns
 
-* **Settings:** all list/rate cells are editable. Add bookmaker accounts in column H, BTO methods in I, non-promo types in J, results in K, statuses in L, transaction types in M, and banks in N. Promo rates are A:B, EV tier limits D:F, and the missing-BSP BTO default is E10.
+* **Settings:** all list/rate cells are editable. Add bookmaker accounts in column H, BTO methods in I, non-promo types in J, results in K, general account statuses in L, transaction types in M, and banks in N. Bookie Health statuses (including colours, order, and active flags) are in P:T, and its bookmaker list is in V. Promo rates are A:B, EV tier limits D:F, and the missing-BSP BTO default is E10.
+* **Bookie Health:** bookmaker rows come from Settings column V. Profiles 1–20 begin in columns B:U. Selecting another active status appends it with `, `; repeats are ignored and clearing a cell leaves it blank. Use **Matched Betting Tracker → Refresh Bookie Health** after editing bookmakers or status settings.
 * **Promos:** Date, Account, Promo Type, Notes, Turnover, Odds, Result, Cash Change, Bonus Change (B:H and K:L, excluding generated columns). Entry ID, Promo EV %, Estimated EV, Actual PnL, POT %, EV Tier, and Month are calculated.
 * **BTO:** Date, Account, BTO Method, Notes, Turnover, Odds, optional BSP, Result, Bookie Change, Betfair Lay Stake, Lay Odds, Commission %, and Betfair Change (B:I and L:P). Entry ID, EV Taken, EV %, Actual Return, Actual BTO %, and Month are calculated.
 * **NonPromos:** Date, Account, Non-Promo Type, Notes, Turnover, Odds, BSP, Result, Bookie Change, and Betfair Change (B:I and L:M). Entry ID, Expected EV, EV %, Actual PnL, POT %, and Month are calculated.
@@ -31,7 +32,7 @@ Formula columns use spill formulas and warning-only protections. Warning-only pr
 ## Checks and calculation assumptions
 
 * `runBtoFormulaTests()` verifies the four required results: AUD 24.50, 19.22, 5.44, and 18.75. The final case reads the editable Settings rate rather than embedding 75% in the calculation.
-* `runAudit()` creates live PASS/FAIL checks with a one-cent monetary tolerance and scans displayed values for spreadsheet errors.
+* `runAudit()` creates live PASS/FAIL checks with a one-cent monetary tolerance, scans displayed values for spreadsheet errors, and checks Bookie Health names, multi-status values, mappings, and validation.
 * Bonus Change is valued at 100%. Blank Bookie/Betfair changes become zero after Date and Turnover exist.
 * BSP is optional for BTO (the Settings fallback applies), but Audit deliberately flags missing BSP for review. Non-promo expected EV remains blank without BSP.
 * Entry IDs are deterministic from sheet, date, and row. Moving a row changes its generated ID; no separate immutable-ID service is assumed.

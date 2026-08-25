@@ -1,6 +1,22 @@
 const MB = Object.freeze({
   ROWS: 2000,
-  SHEETS: ['Settings', 'Promos', 'BTO', 'NonPromos', 'Monthly Metrics', 'EV Breakdown', 'Master PnL', 'Audit'],
+  SHEETS: ['Settings', 'Promos', 'BTO', 'NonPromos', 'Bookie Health', 'Monthly Metrics', 'EV Breakdown', 'Master PnL', 'Audit'],
+  BOOKIE_HEALTH_PROFILES: 20,
+  BOOKIE_HEALTH_SEPARATOR: ', ',
+  BOOKIE_HEALTH_STATUSES: [
+    ['Open','#d9d2e9','#000000',1,true],
+    ['Racing5','#d9d9d9','#000000',2,true],
+    ['Racing10','#fce5cd','#000000',3,true],
+    ['Racing25','#ffe599','#000000',4,true],
+    ['Racing50','#b6d7a8','#000000',5,true],
+    ['Sport5','#d9d9d9','#000000',6,true],
+    ['Sport10','#f6b26b','#000000',7,true],
+    ['Sport25','#ffd966','#000000',8,true],
+    ['Sport50','#6aa84f','#000000',9,true],
+    ['Unverified','#eeeeee','#000000',10,true],
+    ['BAN','#000000','#ffffff',11,true],
+    ['StatDec','#990000','#ffffff',12,true]
+  ],
   PROMO_HEADERS: ['Entry ID','Date','Account','Promo Type','Notes','Turnover','Odds','Result','Promo EV %','Estimated EV','Cash Change','Bonus Change','Actual PnL','POT %','EV Tier','Month'],
   BTO_HEADERS: ['Entry ID','Date','Account','BTO Method','Notes','Turnover','Odds','BSP','Result','EV Taken','EV %','Bookie Change','Betfair Lay Stake','Lay Odds','Commission %','Betfair Change','Actual Return','Actual BTO %','Month'],
   NON_HEADERS: ['Entry ID','Date','Account','Non-Promo Type','Notes','Turnover','Odds','BSP','Result','Expected EV','EV %','Bookie Change','Betfair Change','Actual PnL','POT %','Month'],
