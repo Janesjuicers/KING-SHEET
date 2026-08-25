@@ -1,7 +1,7 @@
 function buildWorkbook() {
   MB.SHEETS.forEach(n => mbSheet_(n));
   setupSettings_();
-  setupEntrySheet_(mbSheet_('Promos'), MB.PROMO_HEADERS);
+  setupPromos_();
   setupEntrySheet_(mbSheet_('BTO'), MB.BTO_HEADERS);
   setupEntrySheet_(mbSheet_('NonPromos'), MB.NON_HEADERS);
   seedPromoExamples_();
@@ -15,13 +15,37 @@ function buildWorkbook() {
 
 function seedPromoExamples_() {
   const s=mbSheet_('Promos');
-  if (s.getRange('B2:B').getValues().some(r=>r[0]!=='')) return;
+  if (s.getRange('A6:A').getValues().some(r=>r[0]!=='')) return;
   const today=new Date();
-  s.getRange('B2:H4').setValues([
+  s.getRange('A6:G8').setValues([
     [today,'','SGM3 Leg','Starter example: edit or delete',100,2.10,'W'],
     [today,'','Free Hit Single','Starter example: edit or delete',50,4.00,'B'],
     [today,'','SRM','Starter example: edit or delete',25,3.20,'L']]);
-  s.getRange('K2:L4').setValues([[30,0],[-50,50],[-25,0]]);
+  s.getRange('I6:J8').setValues([[30,0],[-50,50],[-25,0]]);
+}
+
+/** Migrates the original 16-column Promo table without changing its entries. */
+function setupPromos_() {
+  const s=mbSheet_('Promos'), oldHeaders=s.getRange(1,1,1,Math.min(16,s.getMaxColumns())).getValues()[0];
+  const isOld=oldHeaders.indexOf('Entry ID')>=0 || oldHeaders.indexOf('Estimated EV')>=0;
+  let entries=[];
+  if (isOld) {
+    const index={}; oldHeaders.forEach((h,i)=>index[h]=i);
+    const values=s.getRange(2,1,Math.max(1,s.getLastRow()-1),oldHeaders.length).getValues();
+    entries=values.filter(r=>r[index['Date']]!=='').map(r=>[
+      r[index['Date']],r[index['Account']],r[index['Promo Type']],r[index['Notes']],r[index['Turnover']],
+      r[index['Odds']],r[index['Result']],'',r[index['Cash Change']],r[index['Bonus Change']]
+    ]);
+    if (s.getFilter()) s.getFilter().remove();
+    s.clear();
+  }
+  mbEnsureSize_(s,MB.ROWS,MB.PROMO_HEADERS.length);
+  if (s.getMaxColumns()>MB.PROMO_HEADERS.length) s.deleteColumns(MB.PROMO_HEADERS.length+1,s.getMaxColumns()-MB.PROMO_HEADERS.length);
+  s.getRange(MB.PROMO_HEADER_ROW,1,1,MB.PROMO_HEADERS.length).setValues([MB.PROMO_HEADERS]);
+  s.getRange('A1:C1').setValues([['Total Turnover','Total EV Taken','Total EV %']]);
+  if (entries.length) s.getRange(MB.PROMO_DATA_ROW,1,entries.length,entries[0].length).setValues(entries);
+  s.setFrozenRows(MB.PROMO_HEADER_ROW);
+  if (!s.getFilter()) s.getRange(MB.PROMO_HEADER_ROW,1,s.getMaxRows()-MB.PROMO_HEADER_ROW+1,MB.PROMO_HEADERS.length).createFilter();
 }
 
 function setupSettings_() {

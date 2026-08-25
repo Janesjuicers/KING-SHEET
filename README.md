@@ -21,7 +21,7 @@ The build is idempotent: it reuses named sheets, replaces managed formulas/chart
 ## Manual-entry columns
 
 * **Settings:** all list/rate cells are editable. Add bookmaker accounts in column H, BTO methods in I, non-promo types in J, results in K, statuses in L, transaction types in M, and banks in N. Promo rates are A:B, EV tier limits D:F, and the missing-BSP BTO default is E10.
-* **Promos:** Date, Account, Promo Type, Notes, Turnover, Odds, Result, Cash Change, Bonus Change (B:H and K:L, excluding generated columns). Entry ID, Promo EV %, Estimated EV, Actual PnL, POT %, EV Tier, and Month are calculated.
+* **Promos:** The summary is in A1:C2 and the entry table starts on row 5. Date, Account, Promo Type, Notes, Turnover, Odds, Result, Cash Change, and Bonus Change are editable; EV Taken is calculated directly from Turnover and the Promo Type rate in Settings.
 * **BTO:** Date, Account, BTO Method, Notes, Turnover, Odds, optional BSP, Result, Bookie Change, Betfair Lay Stake, Lay Odds, Commission %, and Betfair Change (B:I and L:P). Entry ID, EV Taken, EV %, Actual Return, Actual BTO %, and Month are calculated.
 * **NonPromos:** Date, Account, Non-Promo Type, Notes, Turnover, Odds, BSP, Result, Bookie Change, and Betfair Change (B:I and L:M). Entry ID, Expected EV, EV %, Actual PnL, POT %, and Month are calculated.
 * **EV Breakdown:** reporting period in B2; for Custom, From Date in B3 and To Date in B4.
@@ -34,6 +34,6 @@ Formula columns use spill formulas and warning-only protections. Warning-only pr
 * `runAudit()` creates live PASS/FAIL checks with a one-cent monetary tolerance and scans displayed values for spreadsheet errors.
 * Bonus Change is valued at 100%. Blank Bookie/Betfair changes become zero after Date and Turnover exist.
 * BSP is optional for BTO (the Settings fallback applies), but Audit deliberately flags missing BSP for review. Non-promo expected EV remains blank without BSP.
-* Entry IDs are deterministic from sheet, date, and row. Moving a row changes its generated ID; no separate immutable-ID service is assumed.
+* BTO and NonPromos Entry IDs are deterministic from sheet, date, and row. Promos intentionally has no Entry ID.
 * Australian dates and AUD formats are display formats. The project time zone is Australia/Sydney.
 * Settings updates recalculate spill formulas and every downstream summary/dashboard because all summaries reference entry-level calculated columns.
