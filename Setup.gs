@@ -21,7 +21,8 @@ function migrateBtoSheet_() {
   const oldHeaders=s.getRange(1,1,1,lastCol).getDisplayValues()[0].map(x=>String(x).trim());
   if(oldHeaders.slice(0,wanted.length).join('\u0001')===wanted.join('\u0001') && !oldHeaders.includes('Entry ID') && !oldHeaders.includes('Month')) { setupEntrySheet_(s,wanted); trimBtoColumns_(s); return; }
   const rows=lastRow>1?s.getRange(2,1,lastRow-1,lastCol).getValues():[];
-  const mapped=rows.map(row=>wanted.map(h=>{const i=oldHeaders.indexOf(h);return i<0?'':row[i];}));
+  const aliases={'Betfair Lay':['Betfair Lay Stake'],'Commission':['Commission %']};
+  const mapped=rows.map(row=>wanted.map(h=>{let i=oldHeaders.indexOf(h);if(i<0)(aliases[h]||[]).some(a=>(i=oldHeaders.indexOf(a))>=0);return i<0?'':row[i];}));
   const filter=s.getFilter(); if(filter)filter.remove();
   s.getDataRange().clearContent(); mbEnsureSize_(s,MB.ROWS,wanted.length); s.getRange(1,1,1,wanted.length).setValues([wanted]);
   if(mapped.length)s.getRange(2,1,mapped.length,wanted.length).setValues(mapped);

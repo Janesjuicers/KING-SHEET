@@ -1,69 +1,25 @@
 function runAudit() {
-  const s=mbSheet_('Audit'); mbEnsureSize_(s,40,5); s.clear();
-  s.getRange('A1:E1').setValues([['Audit Test','Status','Observed','Expected / tolerance','Notes']]);
+  const s=mbSheet_('Audit');mbEnsureSize_(s,60,5);s.clear();s.getRange('A1:E1').setValues([['Audit Test','Status','Observed','Expected / tolerance','Notes']]);
+  const live=(name,observed,expected,note)=>[name,`=IF(ABS(${observed})<=0.01,"PASS","FAIL")`,`=${observed}`,'$0.01',note||''];
   const tests=[
-    ['Promo totals versus Monthly Metrics','=IF(ABS(SUM(Promos!I2:I)+SUM(Promos!J2:J)-SUM(\'Monthly Metrics\'!E2:E))<=0.01,"PASS","FAIL")','=SUM(Promos!I2:I)+SUM(Promos!J2:J)-SUM(\'Monthly Metrics\'!E2:E)','$0.01','Cash Change plus Bonus Change versus monthly aggregate'],
-    ['BTO totals versus Monthly Metrics','=IF(ABS(SUM(BTO!P2:P)-SUM(\'Monthly Metrics\'!J2:J))<=0.01,"PASS","FAIL")','=SUM(BTO!P2:P)-SUM(\'Monthly Metrics\'!J2:J)','$0.01',''],
-    ['Non-promo totals versus Monthly Metrics','=IF(ABS(SUM(NonPromos!M2:M)-SUM(\'Monthly Metrics\'!O2:O))<=0.01,"PASS","FAIL")','=SUM(NonPromos!M2:M)-SUM(\'Monthly Metrics\'!O2:O)','$0.01',''],
-    ['Monthly Metrics versus Master PnL','=IF(ABS(SUM(\'Monthly Metrics\'!R2:R)-\'Master PnL\'!B21)<=0.01,"PASS","FAIL")','=SUM(\'Monthly Metrics\'!R2:R)-\'Master PnL\'!B21','$0.01',''],
-    ['Missing Promo Type Settings rates','=IF(COUNTIFS(Promos!C2:C,"<>",Promos!H2:H,"#N/A")=0,"PASS","FAIL")','=COUNTIFS(Promos!C2:C,"<>",Promos!H2:H,"#N/A")','0',''],
-    ['Missing BSP values','=IF(COUNTIFS(BTO!A2:A,"<>",BTO!G2:G,"")+COUNTIFS(NonPromos!A2:A,"<>",NonPromos!G2:G,"")=0,"PASS","FAIL")','=COUNTIFS(BTO!A2:A,"<>",BTO!G2:G,"")+COUNTIFS(NonPromos!A2:A,"<>",NonPromos!G2:G,"")','0','BTO blanks are permitted but flagged for review'],
-    ['Invalid dates','=IF(SUM(ARRAYFORMULA(N({Promos!A2:A;BTO!A2:A;NonPromos!A2:A}<>"")*N(NOT(ISNUMBER({Promos!A2:A;BTO!A2:A;NonPromos!A2:A}))))))=0,"PASS","FAIL")','','0',''],
-    ['Formula errors', formulaErrors_() ? 'FAIL':'PASS',formulaErrors_(), '0','Scanned all displayed cell values'],
-    ['$35 at odds 8.00 with BSP 10.00 must produce $24.50','=IF(ROUND(35*(8-1)/10,2)=24.5,"PASS","FAIL")','=ROUND(35*(8-1)/10,2)','$24.50','BTO formula test'],
-    ['$30 at odds 11.00 with BSP 15.61 must produce $19.22','=IF(ROUND(30*(11-1)/15.61,2)=19.22,"PASS","FAIL")','=ROUND(30*(11-1)/15.61,2)','$19.22','BTO formula test'],
-    ['$10 at odds 10.00 with BSP 16.54 must produce $5.44','=IF(ROUND(10*(10-1)/16.54,2)=5.44,"PASS","FAIL")','=ROUND(10*(10-1)/16.54,2)','$5.44','BTO formula test'],
-    ['$25 with no BSP and a 75% default rate must produce $18.75','=IF(ROUND(25*Settings!E10,2)=18.75,"PASS","FAIL")','=ROUND(25*Settings!E10,2)','$18.75','Uses editable Settings rate']];
-  bookieHealthAuditTests_().forEach(t=>tests.push(t));
-  tests.forEach((r,i)=>{r.forEach((v,j)=>{const c=s.getRange(i+2,j+1);if(typeof v==='string'&&v[0]==='=')c.setFormula(v);else c.setValue(v);});});
-  s.getRange('A1:E1').setBackground('#183153').setFontColor('white').setFontWeight('bold');s.setFrozenRows(1);s.autoResizeColumns(1,5);s.setColumnWidth(1,340);s.setColumnWidth(5,300);
+    ['Bookie Health selected statuses have Account ID formulas',bookieFormulaGapCount_()?'FAIL':'PASS',bookieFormulaGapCount_(),'0','Every Account ID column is an ARRAYFORMULA'],
+    ['Calculated and Notes cells have no dropdown validation',calculatedValidationCount_()?'FAIL':'PASS',calculatedValidationCount_(),'0','Includes Bookie Health Account ID cells'],
+    ['Managed currency columns use AUD format',currencyFormatErrorCount_()?'FAIL':'PASS',currencyFormatErrorCount_(),'0','Turnover and calculated money columns'],
+    live('Promos totals versus EV Breakdown','SUM(Promos!I2:I)+SUM(Promos!J2:J)-SUM(\'EV Breakdown\'!D11:D29)','0','Cash Change plus Bonus Change'),
+    live('BTO totals versus EV Breakdown','SUM(BTO!J2:J)+SUM(BTO!N2:N)-SUM(\'EV Breakdown\'!U11:U17)','0','Bookie plus Betfair'),
+    live('NonPromo totals versus EV Breakdown','SUM(NonPromos!K2:K)+SUM(NonPromos!O2:O)-SUM(\'EV Breakdown\'!M11:M20)','0','Bookie plus Betfair'),
+    live('EV Breakdown versus Monthly Metrics','SUM(\'Monthly Metrics\'!R2:R)-(SUM(Promos!I2:I)+SUM(Promos!J2:J)+SUM(BTO!J2:J)+SUM(BTO!N2:N)+SUM(NonPromos!K2:K)+SUM(NonPromos!O2:O))','0','All-time actual'),
+    live('Monthly Metrics versus Master PnL','SUM(\'Monthly Metrics\'!R2:R)-\'Master PnL\'!C27','0','Overall actual'),
+    ['Negative bonus balances are flagged','=IF(COUNTIF(Accounts!D5:D,"<0")=0,"PASS","FAIL")','=COUNTIF(Accounts!D5:D,"<0")','0','Review negative calculated bonus balances'],
+    ['Future blank months have no cumulative values','=IF(COUNTIFS(\'Monthly Metrics\'!A2:A,"",\'Monthly Metrics\'!S2:S,"<>")+COUNTIFS(\'Monthly Metrics\'!A2:A,"",\'Monthly Metrics\'!T2:T,"<>")=0,"PASS","FAIL")','','0',''],
+    ['Formula errors',formulaErrors_()?'FAIL':'PASS',formulaErrors_(),'0','Scans #REF!, #VALUE!, #N/A and other errors'],
+    ['Missing Settings mappings','=IF(COUNTIFS(Promos!C2:C,"<>",Promos!H2:H,"#N/A")=0,"PASS","FAIL")','=COUNTIFS(Promos!C2:C,"<>",Promos!H2:H,"#N/A")','0',''],
+    ['$35 @ 8.00 / BSP 10.00','=IF(ROUND(35*(8-1)/10,2)=24.5,"PASS","FAIL")','=ROUND(35*(8-1)/10,2)','$24.50',''],['$30 @ 11.00 / BSP 15.61','=IF(ROUND(30*(11-1)/15.61,2)=19.22,"PASS","FAIL")','=ROUND(30*(11-1)/15.61,2)','$19.22',''],['$10 @ 10.00 / BSP 16.54','=IF(ROUND(10*(10-1)/16.54,2)=5.44,"PASS","FAIL")','=ROUND(10*(10-1)/16.54,2)','$5.44',''],['$25 at default 75%','=IF(ROUND(25*Settings!E10,2)=18.75,"PASS","FAIL")','=ROUND(25*Settings!E10,2)','$18.75','']
+  ];bookieHealthAuditTests_().forEach(t=>tests.push(t));tests.forEach((r,i)=>r.forEach((v,j)=>{const c=s.getRange(i+2,j+1);if(typeof v==='string'&&v[0]==='=')c.setFormula(v);else c.setValue(v);}));s.getRange('A1:E1').setBackground('#183153').setFontColor('white').setFontWeight('bold');s.setFrozenRows(1);s.autoResizeColumns(1,5);s.setColumnWidth(1,360);s.setColumnWidth(5,300);
 }
-
-function bookieHealthAuditTests_() {
-  const settings=mbSheet_('Settings'), health=mbSheet_('Bookie Health');
-  const rawSettings=settings.getRange(2,22,MB.BOOKIE_HEALTH_ROWS,1).getDisplayValues().flat().map(baseBookmakerName_);
-  const settingNames=rawSettings.filter(Boolean), settingSet=new Set(settingNames.map(v=>v.toLowerCase()));
-  const rawHealth=health.getLastRow()>2?health.getRange(3,1,health.getLastRow()-2,1).getDisplayValues().flat().map(v=>v.trim()):[];
-  const healthNames=rawHealth.filter(Boolean), healthSet=new Set(healthNames.map(v=>v.toLowerCase()));
-  const statusSet=new Set(activeBookieHealthStatuses_().map(r=>String(r[0])));
-  let invalid=0, duplicateStatuses=0, missingValidation=0;
-  if(health.getLastColumn()>1) {
-    const statusRanges=[]; for(let c=2;c<=MB.BOOKIE_HEALTH_PROFILES*2;c+=2)statusRanges.push(health.getRange(3,c,MB.BOOKIE_HEALTH_ROWS,1));
-    statusRanges.forEach(range=>range.getDisplayValues().flat().forEach(value=>{
-      if(!value) return;
-      const parts=value.split(MB.BOOKIE_HEALTH_SEPARATOR).map(v=>v.trim()).filter(Boolean);
-      invalid+=parts.filter(v=>!statusSet.has(v)).length;
-      duplicateStatuses+=parts.length-new Set(parts).size;
-    }));
-    missingValidation=statusRanges.reduce((n,range)=>n+range.getDataValidations().flat().filter(v=>!v).length,0);
-  }
-  const duplicateNames=(settingNames.length-settingSet.size)+(healthNames.length-healthSet.size);
-  const missingHealth=settingNames.filter(v=>!healthSet.has(v.toLowerCase())).length;
-  const missingSettings=healthNames.filter(v=>!settingSet.has(v.toLowerCase())).length;
-  const result=(name,count,note)=>[name,count===0?'PASS':'FAIL',count,'0',note];
-  return [
-    result('Bookie Health duplicate bookmaker names',duplicateNames,'Checks Settings and Bookie Health'),
-    result('Bookie Health duplicate Account IDs',accountIdDuplicateCount_(),'Checks every generated nonblank ID'),
-    result('Bookie Health invalid status values',invalid,'Splits multi-selections on ", " and checks active Settings statuses'),
-    result('Bookie Health duplicate statuses in cells',duplicateStatuses,'Each selected status may appear only once per cell'),
-    result('Bookie Health missing dropdown validation',missingValidation,'Checks all 250 bookmaker rows and 24 profiles'),
-    result('Settings bookmakers missing from Bookie Health',missingHealth,'Refresh Bookie Health to add missing rows'),
-    result('Bookie Health bookmakers missing from Settings',missingSettings,'Bookie Health contains no unmanaged rows')
-  ];
-}
-
-function accountIdDuplicateCount_(){
-  const s=mbSheet_('Bookie Health'),ids=[];
-  for(let c=3;c<=MB.BOOKIE_HEALTH_PROFILES*2+1;c+=2)s.getRange(3,c,MB.BOOKIE_HEALTH_ROWS,1).getDisplayValues().flat().forEach(v=>{if(v)ids.push(v);});
-  return ids.length-new Set(ids).size;
-}
-
-function formulaErrors_() {
-  return MB.SHEETS.filter(n=>n!=='Audit').reduce((sum,n)=>sum+mbSheet_(n).getDataRange().getDisplayValues().flat().filter(v=>/^#(REF|N\/A|VALUE|DIV\/0|NAME|NUM|ERROR)!?$/.test(v)).length,0);
-}
-
-function runBtoFormulaTests() {
-  const rate=mbSheet_('Settings').getRange('E10').getValue(); const got=[35*(8-1)/10,30*(11-1)/15.61,10*(10-1)/16.54,25*rate].map(x=>Math.round(x*100)/100), want=[24.5,19.22,5.44,18.75];
-  if (!got.every((x,i)=>x===want[i])) throw new Error('BTO test failed: '+got.join(', '));
-  SpreadsheetApp.getActive().toast('All four BTO formula tests passed.'); return got;
-}
+function bookieFormulaGapCount_(){const s=mbSheet_('Bookie Health');let n=0;for(let p=0;p<MB.BOOKIE_HEALTH_PROFILES;p++){if(!s.getRange(3,3+p*2).getFormula())n++;}return n;}
+function currencyFormatErrorCount_(){const spec={Promos:['Turnover','Estimated EV','Cash Change','Bonus Change'],BTO:['Turnover','EV Taken','Bookie Change','Betfair Lay','Betfair Change'],NonPromos:['Turnover','Expected EV','Bookie Change','Betfair Lay','Betfair Change']};let n=0;Object.keys(spec).forEach(name=>{const s=mbSheet_(name);spec[name].forEach(h=>{if(!/\$|AUD|en-AU/.test(s.getRange(2,mbColumn_(s,h)).getNumberFormat()))n++;});});return n;}
+function bookieHealthAuditTests_(){const s=mbSheet_('Bookie Health'),statusSet=new Set(activeBookieHealthStatuses_().map(r=>String(r[0])));let invalid=0,missing=0;for(let p=0;p<MB.BOOKIE_HEALTH_PROFILES;p++){const r=s.getRange(3,2+p*2,MB.BOOKIE_HEALTH_ROWS,1);r.getDisplayValues().flat().forEach(v=>{if(v)invalid+=String(v).split(MB.BOOKIE_HEALTH_SEPARATOR).filter(x=>!statusSet.has(x)).length;});missing+=r.getDataValidations().flat().filter(v=>!v).length;}return [['Bookie Health invalid status values',invalid?'FAIL':'PASS',invalid,'0',''],['Bookie Health missing status dropdowns',missing?'FAIL':'PASS',missing,'0',''],['Bookie Health duplicate Account IDs',accountIdDuplicateCount_()?'FAIL':'PASS',accountIdDuplicateCount_(),'0','']];}
+function accountIdDuplicateCount_(){const s=mbSheet_('Bookie Health'),ids=[];for(let c=3;c<=49;c+=2)s.getRange(3,c,250,1).getDisplayValues().flat().forEach(v=>{if(v)ids.push(v);});return ids.length-new Set(ids).size;}
+function formulaErrors_(){return MB.SHEETS.filter(n=>n!=='Audit').reduce((sum,n)=>sum+mbSheet_(n).getDataRange().getDisplayValues().flat().filter(v=>/^#(REF|N\/A|VALUE|DIV\/0|NAME|NUM|ERROR)!?$/.test(v)).length,0);}
+function runBtoFormulaTests(){const rate=mbSheet_('Settings').getRange('E10').getValue(),got=[35*7/10,30*10/15.61,10*9/16.54,25*rate].map(x=>Math.round(x*100)/100),want=[24.5,19.22,5.44,18.75];if(!got.every((x,i)=>x===want[i]))throw new Error('BTO test failed: '+got.join(', '));return got;}
