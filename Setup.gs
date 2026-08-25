@@ -1,10 +1,10 @@
 function buildWorkbook() {
   MB.SHEETS.forEach(n => mbSheet_(n));
   setupSettings_();
-  refreshBookieHealth();
   setupEntrySheet_(mbSheet_('Promos'), MB.PROMO_HEADERS);
-  setupEntrySheet_(mbSheet_('BTO'), MB.BTO_HEADERS);
+  migrateBtoSheet_();
   setupEntrySheet_(mbSheet_('NonPromos'), MB.NON_HEADERS);
+  refreshBookieHealth();
   seedPromoExamples_();
   refreshFormulas();
   refreshDropdowns();
@@ -12,6 +12,28 @@ function buildWorkbook() {
   formatWorkbook_();
   runAudit();
   SpreadsheetApp.getActive().toast('Matched-betting workbook is ready.');
+}
+
+/** Maps existing BTO values by header so removing Entry ID/Month cannot shift entries. */
+function migrateBtoSheet_() {
+  const s=mbSheet_('BTO'), wanted=MB.BTO_HEADERS, lastCol=s.getLastColumn(), lastRow=s.getLastRow();
+  if(!lastRow || !s.getRange(1,1).getValue()) { setupEntrySheet_(s,wanted); trimBtoColumns_(s); return; }
+  const oldHeaders=s.getRange(1,1,1,lastCol).getDisplayValues()[0].map(x=>String(x).trim());
+  if(oldHeaders.slice(0,wanted.length).join('\u0001')===wanted.join('\u0001') && !oldHeaders.includes('Entry ID') && !oldHeaders.includes('Month')) { setupEntrySheet_(s,wanted); trimBtoColumns_(s); return; }
+  const rows=lastRow>1?s.getRange(2,1,lastRow-1,lastCol).getValues():[];
+  const mapped=rows.map(row=>wanted.map(h=>{const i=oldHeaders.indexOf(h);return i<0?'':row[i];}));
+  const filter=s.getFilter(); if(filter)filter.remove();
+  s.getDataRange().clearContent(); mbEnsureSize_(s,MB.ROWS,wanted.length); s.getRange(1,1,1,wanted.length).setValues([wanted]);
+  if(mapped.length)s.getRange(2,1,mapped.length,wanted.length).setValues(mapped);
+  s.getRange(1,1,s.getMaxRows(),wanted.length).createFilter(); s.setFrozenRows(1);
+  trimBtoColumns_(s);
+}
+
+function trimBtoColumns_(s) {
+  if(s.getMaxColumns()<=MB.BTO_HEADERS.length)return;
+  const filter=s.getFilter(); if(filter)filter.remove();
+  s.deleteColumns(MB.BTO_HEADERS.length+1,s.getMaxColumns()-MB.BTO_HEADERS.length);
+  s.getRange(1,1,s.getMaxRows(),MB.BTO_HEADERS.length).createFilter();
 }
 
 function seedPromoExamples_() {
@@ -28,7 +50,7 @@ function seedPromoExamples_() {
 function setupSettings_() {
   const s = mbSheet_('Settings');
   mbEnsureSize_(s, 100, 22);
-  const headings = [['Promo Type','EV %','','EV Tier','Minimum %','Maximum %','','Bookmaker Accounts','BTO Methods','Non-Promo Types','Results','Account Statuses','Transaction Types','Banks']];
+  const headings = [['Promo Type','EV %','','EV Tier','Minimum %','Maximum %','','Legacy Accounts (unused)','BTO Methods','Non-Promo Types','Results','Account Statuses','Transaction Types','Banks']];
   s.getRange(1,1,1,14).setValues(headings);
   if (!s.getRange('A2').getValue()) s.getRange(2,1,MB.PROMOS.length,2).setValues(MB.PROMOS);
   if (!s.getRange('D2').getValue()) s.getRange('D2:F7').setValues([['A+',.31,1],['A',.20,.3099],['B',.15,.1999],['C',.10,.1499],['D',.05,.0999],['E',0,.0499]]);
@@ -54,7 +76,7 @@ function setupBookieHealthSettings_(s) {
   if (s.getRange('V2:V').getValues().every(r=>r[0]==='')) {
     const candidates=[];
     s.getRange('H2:H100').getDisplayValues().forEach(r=>candidates.push(r[0]));
-    ['Promos','BTO','NonPromos'].forEach(n=>mbSheet_(n).getRange(2,3,MB.ROWS-1,1).getDisplayValues().forEach(r=>candidates.push(r[0])));
+    ['Promos','BTO','NonPromos'].forEach(n=>{const entry=mbSheet_(n), headers=entry.getRange(1,1,1,Math.max(1,entry.getLastColumn())).getDisplayValues()[0];const c=headers.indexOf('Account')+1;if(c)entry.getRange(2,c,MB.ROWS-1,1).getDisplayValues().forEach(r=>candidates.push(r[0]));});
     const names=[...new Set(candidates.map(v=>String(v).trim()).filter(Boolean))];
     if (names.length) s.getRange(2,22,names.length,1).setValues(names.map(v=>[v]));
   }
