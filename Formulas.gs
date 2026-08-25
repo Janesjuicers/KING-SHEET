@@ -6,13 +6,9 @@ function putArray_(sheet, cell, formula) { sheet.getRange(cell).setFormula(formu
 
 function setPromoFormulas_() {
   const s=mbSheet_('Promos');
-  putArray_(s,'A2','=ARRAYFORMULA(IF(B2:B="","","P-"&TEXT(B2:B,"yyyymmdd")&"-"&TEXT(ROW(B2:B)-1,"0000")))');
-  putArray_(s,'I2','=ARRAYFORMULA(IF(D2:D="","",IFNA(VLOOKUP(D2:D,Settings!A2:B,2,FALSE),NA())))');
-  putArray_(s,'J2','=ARRAYFORMULA(IF(F2:F="","",F2:F*I2:I))');
-  putArray_(s,'M2','=ARRAYFORMULA(IF((B2:B="")+(F2:F=""),"",N(K2:K)+N(L2:L)))');
-  putArray_(s,'N2','=ARRAYFORMULA(IF(F2:F="","",M2:M/F2:F))');
-  putArray_(s,'O2','=ARRAYFORMULA(IF(I2:I="","",IFNA(VLOOKUP(I2:I,SORT({Settings!E2:E7,Settings!D2:D7},1,TRUE),2,TRUE),NA())))');
-  putArray_(s,'P2','=ARRAYFORMULA(IF(B2:B="","",DATE(YEAR(B2:B),MONTH(B2:B),1)))');
+  putArray_(s,'H2','=ARRAYFORMULA(IF(E2:E="","",E2:E*IFNA(VLOOKUP(C2:C,Settings!A2:B,2,FALSE),NA())))');
+  putArray_(s,'I2','=ARRAYFORMULA(IF(G2:G="","",IF(G2:G="W",E2:E*(F2:F-1),IF((G2:G="L")+(G2:G="B"),-E2:E,IF(G2:G="Void",0,"")))))');
+  putArray_(s,'J2','=ARRAYFORMULA(IF(G2:G="","",IF(G2:G="B",E2:E,IF((G2:G="W")+(G2:G="L")+(G2:G="Void"),0,""))))');
 }
 
 function setBtoFormulas_() {
@@ -25,21 +21,19 @@ function setBtoFormulas_() {
 
 function setNonPromoFormulas_() {
   const s=mbSheet_('NonPromos');
-  putArray_(s,'A2','=ARRAYFORMULA(IF(B2:B="","","N-"&TEXT(B2:B,"yyyymmdd")&"-"&TEXT(ROW(B2:B)-1,"0000")))');
-  putArray_(s,'J2','=ARRAYFORMULA(IF((F2:F="")+(H2:H=""),"",F2:F*((G2:G/H2:H)-1)))');
-  putArray_(s,'K2','=ARRAYFORMULA(IF(F2:F="","",IF(J2:J="","",J2:J/F2:F)))');
-  putArray_(s,'N2','=ARRAYFORMULA(IF((B2:B="")+(F2:F=""),"",N(L2:L)+N(M2:M)))');
-  putArray_(s,'O2','=ARRAYFORMULA(IF(F2:F="","",N2:N/F2:F))');
-  putArray_(s,'P2','=ARRAYFORMULA(IF(B2:B="","",DATE(YEAR(B2:B),MONTH(B2:B),1)))');
+  putArray_(s,'I2','=ARRAYFORMULA(IF((E2:E="")+(G2:G=""),"",E2:E*((F2:F/G2:G)-1)))');
+  putArray_(s,'J2','=ARRAYFORMULA(IF(E2:E="","",IF(I2:I="","",I2:I/E2:E)))');
+  putArray_(s,'M2','=ARRAYFORMULA(IF((A2:A="")+(E2:E=""),"",N(K2:K)+N(L2:L)))');
+  putArray_(s,'N2','=ARRAYFORMULA(IF(E2:E="","",M2:M/E2:E))');
+  putArray_(s,'O2','=ARRAYFORMULA(IF(A2:A="","",DATE(YEAR(A2:A),MONTH(A2:A),1)))');
 }
 
 function setMonthlyFormulas_() {
-  const s=mbSheet_('Monthly Metrics'); mbEnsureSize_(s,500,20);
-  s.getRange(1,1,1,20).setValues([MB.MONTH_HEADERS]);
-  putArray_(s,'A2','=IFNA(SORT(UNIQUE(FILTER({Promos!P2:P;IF(BTO!A2:A="","",DATE(YEAR(BTO!A2:A),MONTH(BTO!A2:A),1));NonPromos!P2:P},{Promos!P2:P;BTO!A2:A;NonPromos!P2:P}<>""))),"")');
-  const fs = [
-    '=ARRAYFORMULA(IF(A2:A="","",SUMIF(Promos!P:P,A2:A,Promos!F:F)))','=ARRAYFORMULA(IF(A2:A="","",SUMIF(Promos!P:P,A2:A,Promos!J:J)))','=ARRAYFORMULA(IF(A2:A="","",IF(B2:B=0,"",C2:C/B2:B)))','=ARRAYFORMULA(IF(A2:A="","",SUMIF(Promos!P:P,A2:A,Promos!M:M)))','=ARRAYFORMULA(IF(A2:A="","",IF(B2:B=0,"",E2:E/B2:B)))',
+  const s=mbSheet_('Monthly Metrics'); mbEnsureSize_(s,500,20); s.getRange(1,1,1,20).setValues([MB.MONTH_HEADERS]);
+  putArray_(s,'A2','=IFNA(SORT(UNIQUE(FILTER({IF(Promos!A2:A="","",DATE(YEAR(Promos!A2:A),MONTH(Promos!A2:A),1));IF(BTO!A2:A="","",DATE(YEAR(BTO!A2:A),MONTH(BTO!A2:A),1));NonPromos!O2:O},{Promos!A2:A;BTO!A2:A;NonPromos!O2:O}<>""))),"")');
+  const fs=[
+    '=MAP(A2:A,LAMBDA(m,IF(m="","",SUMIFS(Promos!E:E,Promos!A:A,">="&m,Promos!A:A,"<"&EDATE(m,1)))))','=MAP(A2:A,LAMBDA(m,IF(m="","",SUMIFS(Promos!H:H,Promos!A:A,">="&m,Promos!A:A,"<"&EDATE(m,1)))))','=ARRAYFORMULA(IF(A2:A="","",IF(B2:B=0,"",C2:C/B2:B)))','=MAP(A2:A,LAMBDA(m,IF(m="","",SUMIFS(Promos!I:I,Promos!A:A,">="&m,Promos!A:A,"<"&EDATE(m,1))+SUMIFS(Promos!J:J,Promos!A:A,">="&m,Promos!A:A,"<"&EDATE(m,1)))))','=ARRAYFORMULA(IF(A2:A="","",IF(B2:B=0,"",E2:E/B2:B)))',
     '=MAP(A2:A,LAMBDA(m,IF(m="","",SUMIFS(BTO!E:E,BTO!A:A,">="&m,BTO!A:A,"<"&EDATE(m,1)))))','=MAP(A2:A,LAMBDA(m,IF(m="","",SUMIFS(BTO!I:I,BTO!A:A,">="&m,BTO!A:A,"<"&EDATE(m,1)))))','=ARRAYFORMULA(IF(A2:A="","",IF(G2:G=0,"",H2:H/G2:G)))','=MAP(A2:A,LAMBDA(m,IF(m="","",SUMIFS(BTO!P:P,BTO!A:A,">="&m,BTO!A:A,"<"&EDATE(m,1)))))','=ARRAYFORMULA(IF(A2:A="","",IF(G2:G=0,"",J2:J/G2:G)))',
-    '=ARRAYFORMULA(IF(A2:A="","",SUMIF(NonPromos!P:P,A2:A,NonPromos!F:F)))','=ARRAYFORMULA(IF(A2:A="","",SUMIF(NonPromos!P:P,A2:A,NonPromos!J:J)))','=ARRAYFORMULA(IF(A2:A="","",IF(L2:L=0,"",M2:M/L2:L)))','=ARRAYFORMULA(IF(A2:A="","",SUMIF(NonPromos!P:P,A2:A,NonPromos!N:N)))','=ARRAYFORMULA(IF(A2:A="","",IF(L2:L=0,"",O2:O/L2:L)))','=ARRAYFORMULA(IF(A2:A="","",C2:C+H2:H+M2:M))','=ARRAYFORMULA(IF(A2:A="","",E2:E+J2:J+O2:O))','=ARRAYFORMULA(IF(A2:A="","",SCAN(0,Q2:Q,LAMBDA(a,v,a+v))))','=ARRAYFORMULA(IF(A2:A="","",SCAN(0,R2:R,LAMBDA(a,v,a+v))))'];
+    '=ARRAYFORMULA(IF(A2:A="","",SUMIF(NonPromos!O:O,A2:A,NonPromos!E:E)))','=ARRAYFORMULA(IF(A2:A="","",SUMIF(NonPromos!O:O,A2:A,NonPromos!I:I)))','=ARRAYFORMULA(IF(A2:A="","",IF(L2:L=0,"",M2:M/L2:L)))','=ARRAYFORMULA(IF(A2:A="","",SUMIF(NonPromos!O:O,A2:A,NonPromos!M:M)))','=ARRAYFORMULA(IF(A2:A="","",IF(L2:L=0,"",O2:O/L2:L)))','=ARRAYFORMULA(IF(A2:A="","",C2:C+H2:H+M2:M))','=ARRAYFORMULA(IF(A2:A="","",E2:E+J2:J+O2:O))','=ARRAYFORMULA(IF(A2:A="","",SCAN(0,Q2:Q,LAMBDA(a,v,a+v))))','=ARRAYFORMULA(IF(A2:A="","",SCAN(0,R2:R,LAMBDA(a,v,a+v))))'];
   fs.forEach((f,i)=>putArray_(s,String.fromCharCode(66+i)+'2',f));
 }
