@@ -15,8 +15,44 @@ function runAudit() {
     ['$30 at odds 11.00 with BSP 15.61 must produce $19.22','=IF(ROUND(30*(11-1)/15.61,2)=19.22,"PASS","FAIL")','=ROUND(30*(11-1)/15.61,2)','$19.22','BTO formula test'],
     ['$10 at odds 10.00 with BSP 16.54 must produce $5.44','=IF(ROUND(10*(10-1)/16.54,2)=5.44,"PASS","FAIL")','=ROUND(10*(10-1)/16.54,2)','$5.44','BTO formula test'],
     ['$25 with no BSP and a 75% default rate must produce $18.75','=IF(ROUND(25*Settings!E10,2)=18.75,"PASS","FAIL")','=ROUND(25*Settings!E10,2)','$18.75','Uses editable Settings rate']];
+  bookieHealthAuditTests_().forEach(t=>tests.push(t));
   tests.forEach((r,i)=>{r.forEach((v,j)=>{const c=s.getRange(i+2,j+1);if(typeof v==='string'&&v[0]==='=')c.setFormula(v);else c.setValue(v);});});
   s.getRange('A1:E1').setBackground('#183153').setFontColor('white').setFontWeight('bold');s.setFrozenRows(1);s.autoResizeColumns(1,5);s.setColumnWidth(1,340);s.setColumnWidth(5,300);
+}
+
+function bookieHealthAuditTests_() {
+  const settings=mbSheet_('Settings'), health=mbSheet_('Bookie Health');
+  const rawSettings=settings.getRange('V2:V100').getDisplayValues().flat().map(v=>v.trim());
+  const lastSetting=rawSettings.reduce((n,v,i)=>v?i+1:n,0);
+  const settingNames=rawSettings.filter(Boolean), settingSet=new Set(settingNames);
+  const rawHealth=health.getLastRow()>1?health.getRange(2,1,health.getLastRow()-1,1).getDisplayValues().flat().map(v=>v.trim()):[];
+  const healthNames=rawHealth.filter(Boolean), healthSet=new Set(healthNames);
+  const statusSet=new Set(activeBookieHealthStatuses_().map(r=>String(r[0])));
+  let invalid=0, duplicateStatuses=0, missingValidation=0;
+  if(healthNames.length && health.getLastColumn()>1) {
+    const range=health.getRange(2,2,healthNames.length,health.getLastColumn()-1);
+    range.getDisplayValues().flat().forEach(value=>{
+      if(!value) return;
+      const parts=value.split(MB.BOOKIE_HEALTH_SEPARATOR).map(v=>v.trim()).filter(Boolean);
+      invalid+=parts.filter(v=>!statusSet.has(v)).length;
+      duplicateStatuses+=parts.length-new Set(parts).size;
+    });
+    missingValidation=range.getDataValidations().flat().filter(v=>!v).length;
+  }
+  const duplicateNames=(settingNames.length-settingSet.size)+(healthNames.length-healthSet.size);
+  const blankNames=rawSettings.slice(0,lastSetting).filter(v=>!v).length;
+  const missingHealth=settingNames.filter(v=>!healthSet.has(v)).length;
+  const missingSettings=healthNames.filter(v=>!settingSet.has(v)).length;
+  const result=(name,count,note)=>[name,count===0?'PASS':'FAIL',count,'0',note];
+  return [
+    result('Bookie Health duplicate bookmaker names',duplicateNames,'Checks Settings and Bookie Health'),
+    result('Bookie Health blank bookmaker names',blankNames,'Blank names inside the populated Settings list'),
+    result('Bookie Health invalid status values',invalid,'Splits multi-selections on ", " and checks active Settings statuses'),
+    result('Bookie Health duplicate statuses in cells',duplicateStatuses,'Each selected status may appear only once per cell'),
+    result('Bookie Health missing dropdown validation',missingValidation,'Checks every populated bookmaker/profile cell'),
+    result('Settings bookmakers missing from Bookie Health',missingHealth,'Refresh Bookie Health to add missing rows'),
+    result('Bookie Health bookmakers missing from Settings',missingSettings,'Bookie Health contains no unmanaged rows')
+  ];
 }
 
 function formulaErrors_() {
